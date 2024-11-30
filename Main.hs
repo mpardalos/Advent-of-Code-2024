@@ -108,7 +108,7 @@ downloadInput inputDay = do
 
   let inputIsAvailable
         | currentYear < aocYear = False
-        | currentYear > aocYear = False
+        | currentYear > aocYear = True
         | currentMonth < 12 = False
         | currentDay < inputDay = False
         | otherwise = True
