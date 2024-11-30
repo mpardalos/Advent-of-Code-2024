@@ -1,0 +1,6 @@
+# HLint configuration file
+# https://github.com/ndmitchell/hlint
+##########################
+
+- ignore: { name: Use map once }
+- ignore: { name: Use ?~ }

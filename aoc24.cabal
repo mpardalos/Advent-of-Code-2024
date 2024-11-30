@@ -1,0 +1,90 @@
+cabal-version:      2.4
+name:               aoc24
+version:            0.1.0.0
+author:             Michalis Pardalos
+maintainer:         m.pardalos@gmail.com
+
+common opts
+    default-extensions:
+      TypeApplications ViewPatterns GADTs ImportQualifiedPost OverloadedRecordDot
+      NoFieldSelectors OverloadedLabels
+    default-language: GHC2021
+
+library
+    import: opts
+    build-depends:
+        base
+      , safe
+      , containers
+      , unordered-containers
+      , split
+      , deepseq
+      , bytestring
+      , vector
+      , matrix
+      , optics
+      , optics-th
+      , massiv
+      , attoparsec
+      , hashable
+      , parallel
+      , process
+      , fgl
+      , graphviz
+      , grid
+    hs-source-dirs: solutions
+    exposed-modules:  Solutions
+    other-modules:
+        Day1
+      , Day2
+      , Day3
+      , Day4
+      , Day5
+      , Day6
+      , Day7
+      , Day8
+      , Day9
+      , Day10
+      , Day11
+      , Day12
+      , Day13
+      , Day14
+      , Day15
+      , Day16
+      , Day17
+      , Day18
+      , Day19
+      , Day20
+      , Day21
+      , Day22
+      , Day23
+      , Day24
+      , Day25
+      , Util
+      , Data.SparseGrid
+
+executable aoc24
+    import: opts
+    build-depends:
+        base
+      , aoc24
+      , bytestring
+      , clock
+      , http-types
+      , http-conduit
+      , time
+      , directory
+    main-is: Main.hs
+    ghc-options: -threaded -with-rtsopts=-N
+
+benchmark bench
+    import: opts
+    type: exitcode-stdio-1.0
+    build-depends:
+        base
+      , aoc24
+      , criterion
+      , bytestring
+      , containers
+    main-is: Benchmark.hs
+    ghc-options: -threaded -with-rtsopts=-N

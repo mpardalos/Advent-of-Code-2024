@@ -1,0 +1,6 @@
+ignore-project: False
+optimization: 2
+benchmarks: True
+
+program-options
+    ghc-options: -Wall -fdefer-typed-holes
