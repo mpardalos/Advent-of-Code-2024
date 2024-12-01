@@ -2,18 +2,10 @@ module Day1 (part1, part2) where
 
 import Data.Bifunctor (bimap)
 import Data.ByteString (ByteString)
-import Data.ByteString.Char8 qualified as BS
 import Data.Function ((&))
 import Data.IntMultiSet qualified as IntMultiSet
 import Data.List (sort)
-
-readVerticalLists :: ByteString -> ([Int], [Int])
-readVerticalLists input =
-  BS.lines input
-    & map BS.words
-    & map (\[l, r] -> (l, r))
-    & map (bimap (read . BS.unpack) (read . BS.unpack))
-    & unzip
+import Util (readVerticalLists)
 
 part1 :: ByteString -> Int
 part1 input =

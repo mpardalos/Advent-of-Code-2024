@@ -8,8 +8,10 @@ module Util where
 import Control.Concurrent (forkIO)
 import Control.Monad (void)
 import Data.Attoparsec.ByteString.Char8 (Parser, parseOnly)
+import Data.Bifunctor (bimap)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
+import Data.Function ((&))
 import Data.Graph.Inductive (Graph, Node)
 import Data.GraphViz (GraphvizCanvas (Xlib), GraphvizCommand (Dot), GraphvizParams, Labellable, graphToDot, preview, quickParams, runGraphvizCanvas, runGraphvizCanvas', setDirectedness)
 import Data.HashSet qualified as HashSet
@@ -42,6 +44,14 @@ readIntsSepBy c = unfoldr (BS.readInt . (BS.dropWhile (== c)))
 
 readSpacedInts :: ByteString -> [Int]
 readSpacedInts = unfoldr (BS.readInt . BS.dropSpace)
+
+readVerticalLists :: ByteString -> ([Int], [Int])
+readVerticalLists input =
+  BS.lines input
+    & map BS.words
+    & map (\[l, r] -> (l, r))
+    & map (bimap (read . BS.unpack) (read . BS.unpack))
+    & unzip
 
 pairwise :: [a] -> [(a, a)]
 pairwise (a : b : rest) = (a, b) : pairwise (b : rest)
