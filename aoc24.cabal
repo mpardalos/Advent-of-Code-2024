@@ -2,7 +2,7 @@ cabal-version:      2.4
 name:               aoc24
 version:            0.1.0.0
 author:             Michalis Pardalos
-maintainer:         m.pardalos@gmail.com
+maintainer:         me@mpardalos.com
 
 common opts
     default-extensions:
