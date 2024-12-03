@@ -27,12 +27,15 @@ library
       , optics-th
       , massiv
       , attoparsec
+      , parser-combinators
       , hashable
       , parallel
       , process
       , fgl
       , graphviz
       , grid
+      , regex-base
+      , regex-tdfa
     hs-source-dirs: solutions
     exposed-modules:  Solutions
     other-modules:
