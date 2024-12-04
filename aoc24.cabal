@@ -36,6 +36,7 @@ library
       , grid
       , regex-base
       , regex-tdfa
+      , array
     hs-source-dirs: solutions
     exposed-modules:  Solutions
     other-modules:
