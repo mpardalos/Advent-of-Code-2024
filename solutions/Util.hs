@@ -7,7 +7,8 @@ module Util where
 
 import Control.Concurrent (forkIO)
 import Control.Monad (void)
-import Data.Attoparsec.ByteString.Char8 (Parser, parseOnly)
+import Data.Array (Array, listArray)
+import Data.Attoparsec.ByteString.Char8 (Parser, endOfLine, parseOnly, sepBy)
 import Data.Bifunctor (bimap)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
@@ -27,7 +28,6 @@ import System.Process
     createProcess,
     proc,
   )
-import Data.Array (Array, listArray)
 
 parseOrError :: Parser a -> ByteString -> a
 parseOrError parser input = case parseOnly parser input of
@@ -103,6 +103,9 @@ parseDenseGrid input =
       columns = BS.length (head (BS.lines input))
       rows = length (BS.lines input)
    in listArray ((0, 0), (rows - 1, columns - 1)) chars
+
+linesOf :: Parser a -> Parser [a]
+linesOf p = p `sepBy` endOfLine
 
 infixl 4 <<$>>
 

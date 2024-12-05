@@ -1,20 +1,17 @@
 module Day5 (part1, part2) where
 
-import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfLine, sepBy, sepBy1)
+import Data.Attoparsec.ByteString.Char8 (char, decimal, endOfLine, sepBy1)
 import Data.ByteString (ByteString)
 import Data.Function ((&))
 import Data.List (sortBy)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Text.Printf (printf)
-import Util (parseOrError)
+import Util (parseOrError, linesOf)
 
 type Rules = Set (Int, Int)
 
 type Update = [Int]
-
-linesOf :: Parser a -> Parser [a]
-linesOf p = p `sepBy` endOfLine
 
 readInput :: ByteString -> (Rules, [Update])
 readInput = parseOrError $ do
