@@ -27,6 +27,7 @@ import System.Process
     createProcess,
     proc,
   )
+import Data.Array (Array, listArray)
 
 parseOrError :: Parser a -> ByteString -> a
 parseOrError parser input = case parseOnly parser input of
@@ -93,6 +94,15 @@ unsafeParse :: Parser a -> ByteString -> a
 unsafeParse parser bs = case parseOnly parser bs of
   Right r -> r
   Left e -> error ("Parse failure: " ++ show e)
+
+type Grid c = Array (Int, Int) c
+
+parseDenseGrid :: ByteString -> Grid Char
+parseDenseGrid input =
+  let chars :: [Char] = concatMap BS.unpack (BS.lines input)
+      columns = BS.length (head (BS.lines input))
+      rows = length (BS.lines input)
+   in listArray ((0, 0), (rows - 1, columns - 1)) chars
 
 infixl 4 <<$>>
 

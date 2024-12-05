@@ -6,8 +6,7 @@ import Data.Array.IArray ((!?))
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
 import Data.Maybe (isJust)
-
-type Grid c = Array (Int, Int) c
+import Util (Grid, parseDenseGrid)
 
 xmasAtPos :: Grid Char -> (Int, Int) -> Int
 xmasAtPos g (row, col) =
@@ -21,13 +20,6 @@ xmasAtPos g (row, col) =
           diagonalLeft `elem` [Just "XMAS", Just "SAMX"],
           diagonalRight `elem` [Just "XMAS", Just "SAMX"]
         ]
-
-parseDenseGrid :: ByteString -> Grid Char
-parseDenseGrid input =
-  let chars :: [Char] = concatMap BS.unpack (BS.lines input)
-      columns = BS.length (head (BS.lines input))
-      rows = length (BS.lines input)
-   in listArray ((0, 0), (rows - 1, columns - 1)) chars
 
 part1 :: ByteString -> Int
 part1 input =
