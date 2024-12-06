@@ -6,7 +6,7 @@ import Data.List (find, unfoldr)
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Safe (fromJustNote)
-import Util (Grid, readDenseGrid)
+import Util (UGrid, readDenseGrid, UGrid)
 
 findIdx :: (IArray a e, Ix i) => (e -> Bool) -> a i e -> Maybe (i, e)
 findIdx p arr = find (p . snd) $ assocs arr
@@ -28,7 +28,7 @@ turnRight E = S
 turnRight S = W
 turnRight W = N
 
-step :: Grid Char -> (Position, Direction) -> Maybe (Position, Direction)
+step :: UGrid Char -> (Position, Direction) -> Maybe (Position, Direction)
 step g (pos, dir) = do
   let nextPos = applyDirection pos dir
   facingCell <- g !? nextPos
@@ -37,7 +37,7 @@ step g (pos, dir) = do
       then (pos, turnRight dir)
       else (nextPos, dir)
 
-pathFrom :: Grid Char -> Position -> Direction -> [(Position, Direction)]
+pathFrom :: UGrid Char -> Position -> Direction -> [(Position, Direction)]
 pathFrom grid initialPos initialDir =
   (initialPos, initialDir)
     : unfoldr
@@ -56,13 +56,13 @@ part1 input =
           $ findIdx (== '^') grid
    in length . Set.fromList . map fst $ pathFrom grid initialPos N
 
-loopFrom :: Grid Char -> Position -> Direction -> Bool
+loopFrom :: UGrid Char -> Position -> Direction -> Bool
 loopFrom g p d = go Set.empty (pathFrom g p d)
   where
     go _ [] = False
     go visited (x : xs) = Set.member x visited || go (Set.insert x visited) xs
 
-addedObstructions :: Grid Char -> [Grid Char]
+addedObstructions :: UGrid Char -> [UGrid Char]
 addedObstructions g = mapMaybe obstructionAt (assocs g)
   where
     obstructionAt (pos, '.') = Just (g // [(pos, '#')])

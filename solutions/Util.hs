@@ -7,7 +7,11 @@ module Util where
 
 import Control.Concurrent (forkIO)
 import Control.Monad (void)
-import Data.Array (Array, listArray)
+-- import Data.Array (Array, listArray)
+
+import Data.Array (Array)
+import Data.Array.IArray (IArray, listArray)
+import Data.Array.Unboxed (UArray)
 import Data.Attoparsec.ByteString.Char8 (Parser, endOfLine, parseOnly, sepBy)
 import Data.Bifunctor (bimap)
 import Data.ByteString (ByteString)
@@ -97,7 +101,10 @@ unsafeParse parser bs = case parseOnly parser bs of
 
 type Grid c = Array (Int, Int) c
 
-readDenseGrid :: ByteString -> Grid Char
+type UGrid c = UArray (Int, Int) c
+
+-- readDenseGrid :: ByteString -> Grid Char
+readDenseGrid :: (IArray a Char) => ByteString -> a (Int, Int) Char
 readDenseGrid input =
   let chars :: [Char] = concatMap BS.unpack (BS.lines input)
       columns = BS.length (head (BS.lines input))
