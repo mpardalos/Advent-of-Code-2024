@@ -97,8 +97,8 @@ unsafeParse parser bs = case parseOnly parser bs of
 
 type Grid c = Array (Int, Int) c
 
-parseDenseGrid :: ByteString -> Grid Char
-parseDenseGrid input =
+readDenseGrid :: ByteString -> Grid Char
+readDenseGrid input =
   let chars :: [Char] = concatMap BS.unpack (BS.lines input)
       columns = BS.length (head (BS.lines input))
       rows = length (BS.lines input)

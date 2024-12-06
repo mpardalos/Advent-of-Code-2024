@@ -6,7 +6,7 @@ import Data.Array.IArray ((!?))
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
 import Data.Maybe (isJust)
-import Util (Grid, parseDenseGrid)
+import Util (Grid, readDenseGrid)
 
 xmasAtPos :: Grid Char -> (Int, Int) -> Int
 xmasAtPos g (row, col) =
@@ -23,7 +23,7 @@ xmasAtPos g (row, col) =
 
 part1 :: ByteString -> Int
 part1 input =
-  let grid = parseDenseGrid input
+  let grid = readDenseGrid input
       ((0, 0), (maxRow, maxCol)) = bounds grid
       xmasPositions =
         [ xmasAtPos grid (row, col)
@@ -53,7 +53,7 @@ masAtPos g (row, col) = isJust $ do
 
 part2 :: ByteString -> Int
 part2 input =
-  let grid = parseDenseGrid input
+  let grid = readDenseGrid input
       ((0, 0), (maxRow, maxCol)) = bounds grid
       xmasPositions =
         [ masAtPos grid (row, col)
