@@ -58,12 +58,15 @@ printTableAnchor anchorType =
       Middle -> "┼"
       Bottom -> "┴"
 
-printLine :: String -> TimeSpec -> String -> IO ()
-printLine name time answer =
+printLineName :: String -> IO ()
+printLineName name = do
+  printf "│ %*s │ " titleLength name
+  hFlush stdout
+
+printLineAnswer :: TimeSpec -> String -> IO ()
+printLineAnswer time answer =
   printf
-    "│ %*s │ %6s │ %s \n"
-    titleLength
-    name
+    "%6s │ %s \n"
     formattedTime
     -- If the answer spans multiple lines, align it all in the right column of the table
     ( concatMap
@@ -168,10 +171,12 @@ main = do
   printTableAnchor Top
   times <- forM solutionsWithInputs $ \case
     (solution, Left msg) -> do
-      printLine (problemName solution) 0 msg
+      printLineName (problemName solution)
+      printLineAnswer 0 msg
       return 0
     (solution@MkSolution {solve}, Right input) -> do
       let name = problemName solution
+      printLineName name
       startTime <- getTime Monotonic
       traceMarkerIO ("Begin " ++ name)
       answer <-
@@ -184,12 +189,13 @@ main = do
       timeElapsed <- diffTimeSpec startTime <$> getTime Monotonic
       case answer of
         Nothing -> do
-          printLine name 0 ""
+          printLineAnswer 0 ""
           return 0
         Just s -> do
-          printLine name timeElapsed s
+          printLineAnswer timeElapsed s
           return timeElapsed
 
   printTableAnchor Middle
-  printLine "Total time" (sum times) ""
+  printLineName "Total time"
+  printLineAnswer (sum times) ""
   printTableAnchor Bottom
