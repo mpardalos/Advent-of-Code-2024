@@ -1,8 +1,9 @@
 module Day6 (part1, part2) where
 
-import Data.Array.IArray (IArray, Ix, assocs, (!?))
+import Data.Array.IArray (IArray, Ix, assocs, (!?), (//))
 import Data.ByteString (ByteString)
 import Data.List (find, unfoldr)
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Safe (fromJustNote)
 import Util (Grid, readDenseGrid)
@@ -11,7 +12,7 @@ findIdx :: (IArray a e, Ix i) => (e -> Bool) -> a i e -> Maybe (i, e)
 findIdx p arr = find (p . snd) $ assocs arr
 
 data Direction = N | E | S | W
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 type Position = (Int, Int)
 
@@ -36,13 +37,13 @@ step g (pos, dir) = do
       then (pos, turnRight dir)
       else (nextPos, dir)
 
-pathFrom :: Grid Char -> Position -> Direction -> [Position]
+pathFrom :: Grid Char -> Position -> Direction -> [(Position, Direction)]
 pathFrom grid initialPos initialDir =
-  initialPos
+  (initialPos, initialDir)
     : unfoldr
-      ( \(pos, dir) -> do
-          (pos', dir') <- step grid (pos, dir)
-          return (pos', (pos', dir'))
+      ( \st -> do
+          st' <- step grid st
+          return (st', st')
       )
       (initialPos, initialDir)
 
@@ -53,7 +54,28 @@ part1 input =
         fst
           . fromJustNote "Missing initial position"
           $ findIdx (== '^') grid
-   in length . Set.fromList $ pathFrom grid initialPos N
+   in length . Set.fromList . map fst $ pathFrom grid initialPos N
 
-part2 :: ByteString -> ()
-part2 _ = ()
+loopFrom :: Grid Char -> Position -> Direction -> Bool
+loopFrom g p d = go Set.empty (pathFrom g p d)
+  where
+    go _ [] = False
+    go visited (x : xs) = Set.member x visited || go (Set.insert x visited) xs
+
+addedObstructions :: Grid Char -> [Grid Char]
+addedObstructions g = mapMaybe obstructionAt (assocs g)
+  where
+    obstructionAt (pos, '.') = Just (g // [(pos, '#')])
+    obstructionAt _ = Nothing
+
+part2 :: ByteString -> Int
+part2 input =
+  let grid = readDenseGrid input
+      initialPos =
+        fst
+          . fromJustNote "Missing initial position"
+          $ findIdx (== '^') grid
+   in length
+        . filter (\g -> loopFrom g initialPos N)
+        . addedObstructions
+        $ grid
