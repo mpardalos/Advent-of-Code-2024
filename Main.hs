@@ -5,23 +5,22 @@
 {-# LANGUAGE NumDecimals #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
 
 module Main where
 
 import Control.Exception (Exception, SomeException, catch, evaluate, throwIO, try)
-import Control.Monad (forM, when)
+import Control.Monad (forM, when, foldM)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
 import Data.Function ((&))
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, foldl')
 import Data.Time.Calendar
 import Data.Time.Clock
 import Debug.Trace (traceMarkerIO)
 import Network.HTTP.Simple
 import Network.HTTP.Types
-import Solutions (Solution (..), displayAnswer, isSolvedAnswer, problemName, solutions)
+import Solutions (Solution (..), displayAnswer, isSolvedAnswer, problemName, solutions, IsSlow(..))
 import System.Clock
 import System.Directory
 import System.Environment (getArgs, getEnv)
@@ -150,11 +149,13 @@ getInput day =
 
 main :: IO ()
 main = do
-  filterFun <-
-    getArgs >>= \case
-      [] -> return (const True)
-      [filterString] -> return $ \solution -> filterString `isInfixOf` (problemName solution)
-      _ -> putStrLn "Too many arguments" >> exitFailure
+  args <- getArgs
+  let filters = map (\case
+                        "--notslow" -> \solution -> solution.isSlow == NotSlow
+                        "--slow" -> \solution -> solution.isSlow == Slow
+                        str -> \solution -> str `isInfixOf` problemName solution)
+                args
+  let filterFun = foldl' (\f1 f2 s -> f1 s && f2 s) (const True) filters
 
   solutionsWithInputs <- forM (filter filterFun solutions) $ \solution -> do
     ( do
