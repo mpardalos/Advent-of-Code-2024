@@ -42,7 +42,7 @@ data AnchorType
 printTableAnchor :: AnchorType -> IO ()
 printTableAnchor anchorType =
   printf
-    "%s─%s─%s────────%s───────────\n"
+    "%s─%s─%s──────────────%s───────────\n"
     startMarker
     (replicate titleLength '─')
     middleMarker
@@ -66,7 +66,7 @@ printLineName name = do
 printLineAnswer :: TimeSpec -> String -> IO ()
 printLineAnswer time answer =
   printf
-    "%6s │ %s \n"
+    "%12s │ %s \n"
     formattedTime
     -- If the answer spans multiple lines, align it all in the right column of the table
     ( concatMap
@@ -77,16 +77,13 @@ printLineAnswer time answer =
         answer
     )
   where
-    timeNanos :: Integer
-    timeNanos = toNanoSecs time
+    timeNanos :: Double
+    timeNanos = fromIntegral $ toNanoSecs time
 
     formattedTime :: String
     formattedTime
       | timeNanos == 0 = ""
-      | timeNanos < 1e3 = printf "%d ns" timeNanos
-      | timeNanos < 1e6 = printf "%d μs" (timeNanos `div` 1e3)
-      | timeNanos < 1e9 = printf "%d ms" (timeNanos `div` 1e6)
-      | otherwise = printf "%d  s" (timeNanos `div` 1e9)
+      | otherwise = printf "%.3f ms" (timeNanos / 1e6)
 
 data AOCError = InputNotOutYet
   deriving (Show)
