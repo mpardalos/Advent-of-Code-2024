@@ -5,8 +5,9 @@ import Data.ByteString (ByteString)
 import Data.List (find, unfoldr)
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
-import Safe (fromJustNote, lastMay)
+import Safe (fromJustNote)
 import Util (UGrid, readDenseGrid)
+import Control.Parallel.Strategies (withStrategy, parListChunk, rseq)
 
 findIdx :: (IArray a e, Ix i) => (e -> Bool) -> a i e -> Maybe (i, e)
 findIdx p arr = find (p . snd) $ assocs arr
@@ -86,7 +87,8 @@ part2 input =
         fst
           . fromJustNote "Missing initial position"
           $ findIdx (== '^') grid
-   in length
-        . filter (\g -> loopFrom g (initialPos, N))
+   in sum
+        . withStrategy (parListChunk 1000 rseq)
+        . map (\g -> if loopFrom g (initialPos, N) then 1 else 0)
         . addedObstructions
         $ grid
