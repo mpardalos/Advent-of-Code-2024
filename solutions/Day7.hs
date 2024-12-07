@@ -1,13 +1,16 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Day7 (part1, part2) where
 
+import Control.Monad (guard)
 import Control.Parallel.Strategies (parMap, rpar)
 import Data.Attoparsec.ByteString.Char8 (char, decimal, sepBy, string)
 import Data.ByteString (ByteString)
 import Data.Function ((&))
+import Data.List.Extra (stripSuffix)
+import Data.Maybe (catMaybes)
 import Util (linesOf, parseOrError)
-import Math.NumberTheory.Logarithms (integerLog10, integerLog10')
 
 data Equation = Equation
   { testValue :: !Int,
@@ -15,7 +18,7 @@ data Equation = Equation
   }
   deriving (Eq, Ord, Show)
 
-type Operator = Int -> Int -> Int
+type UnOperator = Int -> Int -> Maybe Int
 
 readEquations :: ByteString -> [Equation]
 readEquations = parseOrError $ linesOf $ do
@@ -24,34 +27,41 @@ readEquations = parseOrError $ linesOf $ do
   parts <- decimal `sepBy` char ' '
   return Equation {testValue, parts}
 
-possibleResults :: [Operator] -> [Int] -> [Int]
-possibleResults operators = go . reverse
+isResultPossible :: [UnOperator] -> Int -> [Int] -> Bool
+isResultPossible unOperators fullTarget = go fullTarget . reverse
   where
-    go [] = []
-    go [x] = [x]
-    go (x : xs) = do
-      op <- operators
-      rest <- go xs
-      -- Order is important here. We run the list in reverse, so we must reverse
-      -- the arguments here again
-      return (rest `op` x)
+    go _ [] = False
+    go target [part] = part == target
+    go target (part : parts) =
+      [unop target part | unop <- unOperators]
+        & catMaybes
+        & any (`go` parts)
 
-equationContribution :: [Operator] -> Equation -> Int
+equationContribution :: [UnOperator] -> Equation -> Int
 equationContribution operators Equation {testValue, parts}
-  | testValue `elem` possibleResults operators parts = testValue
+  | isResultPossible operators testValue parts = testValue
   | otherwise = 0
 
-intConcat :: Int -> Int -> Int
-intConcat l r = (l * (10 ^ (1 + integerLog10' (fromIntegral r)))) + r
+unMultiply, unPlus, unConcat :: UnOperator
+unMultiply target x = do
+  guard (target `mod` x == 0)
+  Just (target `div` x)
+unPlus target x = do
+  guard (target >= x)
+  Just (target - x)
+unConcat target x =
+  stripSuffix (show x) (show target) >>= \case
+    "" -> Just 0
+    str -> Just (read str)
 
 part1 :: ByteString -> Int
 part1 input =
   readEquations input
-    & parMap rpar (equationContribution [(*), (+)])
+    & parMap rpar (equationContribution [unMultiply, unPlus])
     & sum
 
 part2 :: ByteString -> Int
 part2 input =
   readEquations input
-    & parMap rpar (equationContribution [(*), (+), intConcat])
+    & parMap rpar (equationContribution [unMultiply, unPlus, unConcat])
     & sum

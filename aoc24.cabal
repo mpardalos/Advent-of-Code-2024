@@ -38,6 +38,7 @@ library
       , regex-tdfa
       , array
       , integer-logarithms
+      , extra
     hs-source-dirs: solutions
     exposed-modules:  Solutions
     other-modules:
