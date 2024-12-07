@@ -37,6 +37,7 @@ library
       , regex-base
       , regex-tdfa
       , array
+      , integer-logarithms
     hs-source-dirs: solutions
     exposed-modules:  Solutions
     other-modules:

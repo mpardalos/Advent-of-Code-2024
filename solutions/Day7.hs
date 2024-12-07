@@ -7,6 +7,7 @@ import Data.Attoparsec.ByteString.Char8 (char, decimal, sepBy, string)
 import Data.ByteString (ByteString)
 import Data.Function ((&))
 import Util (linesOf, parseOrError)
+import Math.NumberTheory.Logarithms (integerLog10, integerLog10')
 
 data Equation = Equation
   { testValue :: !Int,
@@ -41,12 +42,7 @@ equationContribution operators Equation {testValue, parts}
   | otherwise = 0
 
 intConcat :: Int -> Int -> Int
-intConcat l r = (l * (10 ^ digitCount r)) + r
-  where
-    digitCount :: Int -> Int
-    digitCount n
-      | n `div` 10 == 0 = 1
-      | otherwise = 1 + digitCount (n `div` 10)
+intConcat l r = (l * (10 ^ (1 + integerLog10' (fromIntegral r)))) + r
 
 part1 :: ByteString -> Int
 part1 input =
