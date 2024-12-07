@@ -4,12 +4,10 @@
 
 module Day7 (part1, part2) where
 
+import Control.Parallel.Strategies (parMap, rpar)
 import Data.Attoparsec.ByteString.Char8 (char, decimal, sepBy, string)
 import Data.ByteString (ByteString)
 import Data.Function ((&))
-import Debug.Trace (trace, traceShow)
-import GHC.Records (getField)
-import Text.Printf (printf)
 import Util (linesOf, parseOrError)
 
 data Equation = Equation
@@ -18,36 +16,58 @@ data Equation = Equation
   }
   deriving (Eq, Ord, Show)
 
+type Operator = Int -> Int -> Int
+
 readEquations :: ByteString -> [Equation]
 readEquations = parseOrError $ linesOf $ do
   testValue <- decimal
   _ <- string ": "
   parts <- decimal `sepBy` char ' '
-  return Equation {..}
+  return Equation {testValue, parts}
 
-possibleResults :: [Int] -> [Int]
-possibleResults = go
+possibleResults :: [Operator] -> [Int] -> [Int]
+possibleResults operators = go . reverse
   where
-    go xs | trace ("go " ++ show xs) False = undefined
     go [] = []
     go [x] = [x]
     go (x : xs) = do
-      operator <-
-        [ \l r -> trace (printf "\n%d * %d = %d" l r (l * r)) (l * r),
-          \l r -> trace (printf "\n%d + %d = %d" l r (l + r)) (l + r)
-          ]
-      rest <- possibleResults xs
-      return (operator x rest)
+      op <- operators
+      rest <- go xs
+      -- Order is important here. We run the list in reverse, so we must reverse
+      -- the arguments here again
+      return (rest `op` x)
 
-couldBeTrue :: Equation -> Bool
-couldBeTrue Equation {testValue, parts} = testValue `elem` possibleResults parts
+couldBeTrue :: [Operator] -> Equation -> Bool
+couldBeTrue operators Equation {testValue, parts} = testValue `elem` possibleResults operators parts
 
 part1 :: ByteString -> Int
 part1 input =
   readEquations input
-    & filter couldBeTrue
-    & map (getField @"testValue")
+    & parMap
+      rpar
+      ( \eq ->
+          if couldBeTrue [(*), (+)] eq
+            then eq.testValue
+            else 0
+      )
     & sum
 
-part2 :: ByteString -> ()
-part2 _ = ()
+intConcat :: Int -> Int -> Int
+intConcat l r = (l * (10 ^ digitCount r)) + r
+  where
+    digitCount :: Int -> Int
+    digitCount n
+      | n `div` 10 == 0 = 1
+      | otherwise = 1 + digitCount (n `div` 10)
+
+part2 :: ByteString -> Int
+part2 input =
+  readEquations input
+    & parMap
+      rpar
+      ( \eq ->
+          if couldBeTrue [(*), (+), intConcat] eq
+            then eq.testValue
+            else 0
+      )
+    & sum
