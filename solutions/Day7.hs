@@ -1,6 +1,4 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Day7 (part1, part2) where
 
@@ -37,20 +35,10 @@ possibleResults operators = go . reverse
       -- the arguments here again
       return (rest `op` x)
 
-couldBeTrue :: [Operator] -> Equation -> Bool
-couldBeTrue operators Equation {testValue, parts} = testValue `elem` possibleResults operators parts
-
-part1 :: ByteString -> Int
-part1 input =
-  readEquations input
-    & parMap
-      rpar
-      ( \eq ->
-          if couldBeTrue [(*), (+)] eq
-            then eq.testValue
-            else 0
-      )
-    & sum
+equationContribution :: [Operator] -> Equation -> Int
+equationContribution operators Equation {testValue, parts}
+  | testValue `elem` possibleResults operators parts = testValue
+  | otherwise = 0
 
 intConcat :: Int -> Int -> Int
 intConcat l r = (l * (10 ^ digitCount r)) + r
@@ -60,14 +48,14 @@ intConcat l r = (l * (10 ^ digitCount r)) + r
       | n `div` 10 == 0 = 1
       | otherwise = 1 + digitCount (n `div` 10)
 
+part1 :: ByteString -> Int
+part1 input =
+  readEquations input
+    & parMap rpar (equationContribution [(*), (+)])
+    & sum
+
 part2 :: ByteString -> Int
 part2 input =
   readEquations input
-    & parMap
-      rpar
-      ( \eq ->
-          if couldBeTrue [(*), (+), intConcat] eq
-            then eq.testValue
-            else 0
-      )
+    & parMap rpar (equationContribution [(*), (+), intConcat])
     & sum
