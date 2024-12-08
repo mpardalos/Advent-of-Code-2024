@@ -6,9 +6,7 @@
 module Util where
 
 import Control.Concurrent (forkIO)
-import Control.Monad (void)
--- import Data.Array (Array, listArray)
-
+import Control.Monad (void, (>=>))
 import Data.Array (Array)
 import Data.Array.IArray (IArray, listArray)
 import Data.Array.Unboxed (UArray)
@@ -72,6 +70,9 @@ choose (x : xs) n = map (x :) (xs `choose` (n - 1)) ++ xs `choose` n
 uniquePairs :: [a] -> [(a, a)]
 uniquePairs [] = []
 uniquePairs (x : xs) = [(x, y) | y <- xs] ++ uniquePairs xs
+
+orderedPairs :: [a] -> [(a, a)]
+orderedPairs = uniquePairs >=> \(a, b) -> [(a, b), (b, a)]
 
 manhattanDistance :: (Num a) => (a, a) -> (a, a) -> a
 manhattanDistance (row1, col1) (row2, col2) = abs (row2 - row1) + abs (col2 - col1)
