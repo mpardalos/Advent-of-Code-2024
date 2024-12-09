@@ -100,6 +100,16 @@ unsafeParse parser bs = case parseOnly parser bs of
   Right r -> r
   Left e -> error ("Parse failure: " ++ show e)
 
+expecting :: (a -> Bool) -> a -> a
+expecting p x
+  | p x = x
+  | otherwise = error "expecting"
+
+expectingNote :: String -> (a -> Bool) -> a -> a
+expectingNote note p x
+  | p x = x
+  | otherwise = error ("expected " ++ note)
+
 type Grid c = Array (Int, Int) c
 
 type UGrid c = UArray (Int, Int) c
