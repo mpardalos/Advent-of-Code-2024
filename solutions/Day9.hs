@@ -2,14 +2,16 @@
 
 module Day9 (part1, part2) where
 
-import Data.Bifunctor (Bifunctor (second))
+import Control.Monad.ST (ST)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
+import Data.Foldable (toList)
 import Data.Function ((&))
-import Data.List (unfoldr)
-import Data.Tuple.Extra (dupe)
+import Data.Vector (Vector)
+import Data.Vector qualified as V
+import Data.Vector.Mutable (MVector)
+import Data.Vector.Mutable qualified as MV
 import Util (expectingNote, pairwiseSeparate)
-import Debug.Trace (traceShow)
 
 type FileID = Int
 
@@ -22,7 +24,7 @@ instance Show Block where
   show Empty = "."
   show (Full n) = show n
 
-readInput :: ByteString -> [Block]
+readInput :: ByteString -> Vector (Int, Block)
 readInput input =
   let nums :: [(FileID, (Int, Int))] =
         BS.strip input
@@ -32,45 +34,41 @@ readInput input =
           & (++ [0])
           & pairwiseSeparate
           & zip [0 ..]
-   in concat
-        [ replicate fileBlocks (Full fileID)
-            ++ replicate emptyBlocks Empty
-          | (fileID, (fileBlocks, emptyBlocks)) <- nums
-        ]
+   in V.fromList $
+        concat
+          [ [(fileBlocks, Full fileID), (emptyBlocks, Empty)]
+            | (fileID, (fileBlocks, emptyBlocks)) <- nums
+          ]
 
-checksum :: [Block] -> Int
-checksum = go . zip [0 ..]
+defrag :: Vector Block -> Vector Block
+defrag = V.modify (\vec -> go vec 0 (MV.length vec - 1))
+  where
+    go :: MVector s Block -> Int -> Int -> ST s ()
+    go vec low high
+      | low >= high = return ()
+      | otherwise = do
+          atLow <- MV.read vec low
+          atHigh <- MV.read vec high
+          case (atLow, atHigh) of
+            (Empty, Full _) -> do
+              MV.swap vec low high
+              go vec (low + 1) (high - 1)
+            (Full _, _) -> go vec (low + 1) high
+            (_, Empty) -> go vec low (high - 1)
+
+checksum :: (Foldable t) => t Block -> Int
+checksum = go . zip [0 ..] . toList
   where
     go [] = 0
     go ((pos, Full n) : xs) = pos * n + go xs
-    go ((_, Empty) : _) = error "Empty in checksum"
-
-placeEarliest :: FileID -> [Block] -> [Block]
-placeEarliest fileID _ | traceShow fileID False = undefined
-placeEarliest _ [] = []
-placeEarliest fileID (Full x : xs) = Full x : placeEarliest fileID xs
-placeEarliest fileID (Empty : xs) = Full fileID : xs
-
-withoutLastFile :: [Block] -> (FileID, [Block])
-withoutLastFile [] = error "No files in disk"
-withoutLastFile (Full f : fs) | all (== Empty) fs = (f, [])
-withoutLastFile (f : fs) = second (f :) $ withoutLastFile fs
-
-repositionLast :: [Block] -> [Block]
-repositionLast blocks =
-  let (lastFile, blocks') = withoutLastFile blocks
-   in placeEarliest lastFile blocks'
-
-contiguous :: [Block] -> Bool
-contiguous [] = True
-contiguous (Empty : xs) = all (== Empty) xs
-contiguous (Full x : xs) = contiguous xs
-
-defrag :: [Block] -> [Block]
-defrag = last . dropWhile (not . contiguous) . iterate repositionLast
+    go ((_, Empty) : _) = 0
 
 part1 :: ByteString -> Int
-part1 = checksum . defrag . readInput
+part1 input =
+  readInput input
+    & V.concatMap (uncurry V.replicate)
+    & defrag
+    & checksum
 
 part2 :: ByteString -> ()
 part2 _ = ()
