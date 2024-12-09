@@ -60,6 +60,11 @@ pairwise :: [a] -> [(a, a)]
 pairwise (a : b : rest) = (a, b) : pairwise (b : rest)
 pairwise _ = []
 
+pairwiseSeparate :: [a] -> [(a, a)]
+pairwiseSeparate (a : b : rest) = (a, b) : pairwiseSeparate rest
+pairwiseSeparate _ = []
+
+
 choose :: [a] -> Int -> [[a]]
 choose _ 0 = [[]]
 choose [] _ = []
