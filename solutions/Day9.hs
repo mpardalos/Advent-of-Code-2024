@@ -9,13 +9,18 @@ import Data.Function ((&))
 import Data.List (unfoldr)
 import Data.Tuple.Extra (dupe)
 import Util (expectingNote, pairwiseSeparate)
+import Debug.Trace (traceShow)
 
 type FileID = Int
 
 data Block
   = Full !FileID
   | Empty
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show Block where
+  show Empty = "."
+  show (Full n) = show n
 
 readInput :: ByteString -> [Block]
 readInput input =
@@ -40,27 +45,32 @@ checksum = go . zip [0 ..]
     go ((pos, Full n) : xs) = pos * n + go xs
     go ((_, Empty) : _) = error "Empty in checksum"
 
-placeEarliest :: FileID -> [Block] -> Maybe [Block]
-placeEarliest fileID [] = Nothing
-placeEarliest fileID (Full _ : xs) = placeEarliest fileID xs
-placeEarliest fileID (Empty : xs) = Just (Full fileID : xs)
+placeEarliest :: FileID -> [Block] -> [Block]
+placeEarliest fileID _ | traceShow fileID False = undefined
+placeEarliest _ [] = []
+placeEarliest fileID (Full x : xs) = Full x : placeEarliest fileID xs
+placeEarliest fileID (Empty : xs) = Full fileID : xs
 
 withoutLastFile :: [Block] -> (FileID, [Block])
 withoutLastFile [] = error "No files in disk"
 withoutLastFile (Full f : fs) | all (== Empty) fs = (f, [])
 withoutLastFile (f : fs) = second (f :) $ withoutLastFile fs
 
-repositionLast :: [Block] -> Maybe [Block]
+repositionLast :: [Block] -> [Block]
 repositionLast blocks =
   let (lastFile, blocks') = withoutLastFile blocks
    in placeEarliest lastFile blocks'
 
+contiguous :: [Block] -> Bool
+contiguous [] = True
+contiguous (Empty : xs) = all (== Empty) xs
+contiguous (Full x : xs) = contiguous xs
+
+defrag :: [Block] -> [Block]
+defrag = last . dropWhile (not . contiguous) . iterate repositionLast
+
 part1 :: ByteString -> Int
-part1 input =
-  readInput input
-    & unfoldr (fmap dupe . repositionLast)
-    & last
-    & checksum
+part1 = checksum . defrag . readInput
 
 part2 :: ByteString -> ()
 part2 _ = ()
