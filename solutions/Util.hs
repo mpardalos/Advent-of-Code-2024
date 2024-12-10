@@ -8,7 +8,7 @@ module Util where
 import Control.Concurrent (forkIO)
 import Control.Monad (void, (>=>))
 import Data.Array (Array)
-import Data.Array.IArray (IArray, listArray)
+import Data.Array.IArray (IArray, Ix, assocs, listArray)
 import Data.Array.Unboxed (UArray)
 import Data.Attoparsec.ByteString.Char8 (Parser, endOfLine, parseOnly, sepBy)
 import Data.Bifunctor (bimap)
@@ -19,7 +19,7 @@ import Data.Graph.Inductive (Graph, Node)
 import Data.GraphViz (GraphvizCanvas (Xlib), GraphvizCommand (Dot), GraphvizParams, Labellable, graphToDot, preview, quickParams, runGraphvizCanvas, runGraphvizCanvas', setDirectedness)
 import Data.HashSet qualified as HashSet
 import Data.Hashable (Hashable)
-import Data.List (unfoldr)
+import Data.List (groupBy, intercalate, unfoldr)
 import Data.Set qualified as Set
 import Debug.Trace (trace)
 import GHC.IO.Handle (hPutStr)
@@ -42,6 +42,9 @@ hashNub = HashSet.toList . HashSet.fromList
 ordNub :: (Ord a) => [a] -> [a]
 ordNub = Set.toList . Set.fromList
 
+equating :: (Eq a) => (b -> a) -> b -> b -> Bool
+equating f x y = f x == f y
+
 readIntsSepBy :: Char -> ByteString -> [Int]
 readIntsSepBy c = unfoldr (BS.readInt . (BS.dropWhile (== c)))
 
@@ -63,7 +66,6 @@ pairwise _ = []
 pairwiseSeparate :: [a] -> [(a, a)]
 pairwiseSeparate (a : b : rest) = (a, b) : pairwiseSeparate rest
 pairwiseSeparate _ = []
-
 
 choose :: [a] -> Int -> [[a]]
 choose _ 0 = [[]]
@@ -115,9 +117,14 @@ expectingNote note p x
   | p x = x
   | otherwise = error ("expected " ++ note)
 
-type Grid c = Array (Int, Int) c
+findAllIndices :: (Ix i, IArray a e) => (e -> Bool) -> a i e -> [i]
+findAllIndices p = map fst . filter (p . snd) . assocs
 
-type UGrid c = UArray (Int, Int) c
+type Coords = (Int, Int)
+
+type Grid c = Array Coords c
+
+type UGrid c = UArray Coords c
 
 -- readDenseGrid :: ByteString -> Grid Char
 readDenseGrid :: (IArray a Char) => ByteString -> a (Int, Int) Char
@@ -127,8 +134,32 @@ readDenseGrid input =
       rows = length (BS.lines input)
    in listArray ((0, 0), (rows - 1, columns - 1)) chars
 
+west :: Coords -> Int -> Coords
+west (row, col) n = (row, col - n)
+
+south :: Coords -> Int -> Coords
+south (row, col) n = (row + n, col)
+
+east :: Coords -> Int -> Coords
+east (row, col) n = (row, col + n)
+
+north :: Coords -> Int -> Coords
+north (row, col) n = (row - n, col)
+
+rows :: Grid a -> [[a]]
+rows = map (map snd) . groupBy (equating (fst . fst)) . assocs
+
+showCharGrid :: Grid Char -> String
+showCharGrid = intercalate "\n" . rows
+
+showGridOneChar :: (Show a) => Grid a -> String
+showGridOneChar = showCharGrid . fmap (head . show)
+
 linesOf :: Parser a -> Parser [a]
 linesOf p = p `sepBy` endOfLine
+
+readChar :: (Read a) => Char -> a
+readChar = read . pure
 
 infixl 4 <<$>>
 
