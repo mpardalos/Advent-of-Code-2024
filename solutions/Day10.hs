@@ -2,31 +2,39 @@
 
 module Day10 (part1, part2) where
 
-import Data.Array ((!), (//))
-import Data.Array.IArray (assocs, (!?))
+import Control.Monad.ST (ST)
+import Data.Array.IArray (amap, assocs, (!), (!?))
+import Data.Array.MArray (modifyArray')
+import Data.Array.Unboxed (UArray)
 import Data.ByteString (ByteString)
 import Data.Function ((&))
-import Util (Coords, Grid, east, findAllIndices, north, readChar, readDenseGrid, south, west)
+import Util (Coords, STUGrid, UGrid, east, findAllIndices, north, readChar, readDenseGrid, south, west, withMutableArray)
 
-type TrailMap = Grid Int
+type TrailMap = UGrid Int
 
-type TrailCount = Grid Int
+type TrailCount = UGrid Int
+
+type STUTrailCount s = STUGrid s Int
 
 readInput :: ByteString -> TrailMap
-readInput = fmap (\case '.' -> (-1); c -> readChar c) . readDenseGrid
+readInput = amap (\case '.' -> (-1); c -> readChar c) . readDenseGrid @UArray
 
 trailCountFrom :: TrailMap -> Coords -> TrailCount
-trailCountFrom g = go (fmap (const 0) g) (-1)
+trailCountFrom g startPos =
+  withMutableArray
+    (go (-1) startPos)
+    (amap (const 0) g)
   where
-    go trailCount lastHeight p
-      | Just count <- g !? p,
-        count == lastHeight + 1 =
-          let trailCountNorth = go (trailCount // [(p, trailCount ! p + 1)]) (g ! p) (north p 1)
-              trailCountEast = go trailCountNorth (g ! p) (east p 1)
-              trailCountSouth = go trailCountEast (g ! p) (south p 1)
-              trailCountWest = go trailCountSouth (g ! p) (west p 1)
-           in trailCountWest
-      | otherwise = trailCount
+    go :: forall s. Int -> Coords -> STUTrailCount s -> ST s ()
+    go lastHeight p trailCount
+      | Just height <- g !? p,
+        height == lastHeight + 1 = do
+          modifyArray' trailCount p (1 +)
+          go (g ! p) (north p 1) trailCount
+          go (g ! p) (east p 1) trailCount
+          go (g ! p) (south p 1) trailCount
+          go (g ! p) (west p 1) trailCount
+      | otherwise = return ()
 
 score :: TrailMap -> TrailCount -> Int
 score trailMap trailCount =
