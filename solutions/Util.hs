@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 
@@ -7,8 +8,11 @@ module Util where
 
 import Control.Concurrent (forkIO)
 import Control.Monad (void, (>=>))
+import Control.Monad.ST (ST, runST)
 import Data.Array (Array)
 import Data.Array.IArray (IArray, Ix, assocs, listArray)
+import Data.Array.MArray (MArray, freeze, thaw)
+import Data.Array.ST (STArray, STUArray)
 import Data.Array.Unboxed (UArray)
 import Data.Attoparsec.ByteString.Char8 (Parser, endOfLine, parseOnly, sepBy)
 import Data.Bifunctor (bimap)
@@ -126,6 +130,10 @@ type Grid c = Array Coords c
 
 type UGrid c = UArray Coords c
 
+type STGrid s c = STArray s Coords c
+
+type STUGrid s c = STUArray s Coords c
+
 -- readDenseGrid :: ByteString -> Grid Char
 readDenseGrid :: (IArray a Char) => ByteString -> a (Int, Int) Char
 readDenseGrid input =
@@ -166,3 +174,14 @@ infixl 4 <<$>>
 -- | Like '<$>', but through two levels of functors
 (<<$>>) :: (Functor f1, Functor f2) => (a -> b) -> f1 (f2 a) -> f1 (f2 b)
 (<<$>>) f x = fmap (fmap f) x
+
+withMutableArray ::
+  (Ix i, (forall s. MArray (a s) e (ST s)), IArray b e) =>
+  (forall s. (a s) i e -> ST s ()) ->
+  b i e ->
+  b i e
+withMutableArray f arr = runST $ do
+  mutArr <- thaw arr
+  f mutArr
+  freeze mutArr
+{-# INLINE withMutableArray #-}
