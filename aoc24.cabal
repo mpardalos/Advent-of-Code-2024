@@ -39,6 +39,7 @@ library
       , array
       , integer-logarithms
       , extra
+      , MemoTrie
     hs-source-dirs: solutions
     exposed-modules:  Solutions
     other-modules:
