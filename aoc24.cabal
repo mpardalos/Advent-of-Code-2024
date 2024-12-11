@@ -40,6 +40,7 @@ library
       , integer-logarithms
       , extra
       , MemoTrie
+      , recursion-schemes
     hs-source-dirs: solutions
     exposed-modules:  Solutions
     other-modules:
