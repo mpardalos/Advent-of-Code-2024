@@ -1,4 +1,6 @@
-{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Day12 (part1, part2) where
 
@@ -8,19 +10,26 @@ import Data.Array.IArray (IArray (bounds), Ix (inRange), indices, (!), (!?))
 import Data.Array.MArray (MArray (newArray), readArray, writeArray)
 import Data.ByteString (ByteString)
 import Data.STRef (STRef, modifySTRef', newSTRef, readSTRef)
+import Optics (makeFieldLabelsNoPrefix, (%~))
 import Util (Coords, STUGrid, UGrid, east, north, readDenseGrid, south, west)
 
 type STVisited s = STUGrid s Bool
 
 type GardenMap = UGrid Char
 
-statsFrom :: forall s. GardenMap -> STVisited s -> Coords -> ST s (Int, Int, Int)
+data Stats = MkStats
+  { area :: Int,
+    corners :: Int,
+    perimeter :: Int
+  }
+
+makeFieldLabelsNoPrefix ''Stats
+
+statsFrom :: forall s. GardenMap -> STVisited s -> Coords -> ST s Stats
 statsFrom g visited startCoords = do
-  area <- newSTRef 0
-  corners <- newSTRef 0
-  perimeter <- newSTRef 0
-  go (g ! startCoords) area corners perimeter startCoords
-  (,,) <$> readSTRef area <*> readSTRef corners <*> readSTRef perimeter
+  stats <- newSTRef (MkStats 0 0 0)
+  go (g ! startCoords) stats startCoords
+  readSTRef stats
   where
     cornersAt :: Coords -> Int
     cornersAt coords =
@@ -44,26 +53,27 @@ statsFrom g visited startCoords = do
               s == c && e == c && se /= c
             ]
 
-    go :: Char -> STRef s Int -> STRef s Int -> STRef s Int -> Coords -> ST s ()
-    go plant area corners perimeter coords
-      | not (inRange (bounds g) coords) = modifySTRef' perimeter (1 +)
-      | g ! coords /= plant = modifySTRef' perimeter (1 +)
+    go :: Char -> STRef s Stats -> Coords -> ST s ()
+    go plant stats coords
+      -- If we step out of our area, then we have found an edge
+      | not (inRange (bounds g) coords) = modifySTRef' stats (#perimeter %~ (+ 1))
+      | g ! coords /= plant = modifySTRef' stats (#perimeter %~ (+ 1))
       | otherwise = do
           alreadyVisited <- readArray visited coords
           unless alreadyVisited $ do
-            modifySTRef' corners (cornersAt coords +)
-            modifySTRef' area (1 +)
+            modifySTRef' stats (#corners %~ (+ cornersAt coords))
+            modifySTRef' stats (#area %~ (+ 1))
             writeArray visited coords True
-            go plant area corners perimeter (north coords 1)
-            go plant area corners perimeter (east coords 1)
-            go plant area corners perimeter (south coords 1)
-            go plant area corners perimeter (west coords 1)
+            go plant stats (north coords 1)
+            go plant stats (east coords 1)
+            go plant stats (south coords 1)
+            go plant stats (west coords 1)
 
 fullFencePrice :: GardenMap -> Int
 fullFencePrice g = runST $ do
   visited <- newArray (bounds g) False
-  results <- mapM (statsFrom g visited) (indices g)
-  return $ sum [area * perimeter | (area, _, perimeter) <- results]
+  stats <- mapM (statsFrom g visited) (indices g)
+  return $ sum [s.area * s.perimeter | s <- stats]
 
 part1 :: ByteString -> Int
 part1 = fullFencePrice . readDenseGrid
@@ -71,8 +81,8 @@ part1 = fullFencePrice . readDenseGrid
 discountedFencePrice :: GardenMap -> Int
 discountedFencePrice g = runST $ do
   visited <- newArray (bounds g) False
-  results <- mapM (statsFrom g visited) (indices g)
-  return $ sum [area * corners | (area, corners, _) <- results]
+  stats <- mapM (statsFrom g visited) (indices g)
+  return $ sum [s.area * s.corners | s <- stats]
 
 part2 :: ByteString -> Int
 part2 = discountedFencePrice . readDenseGrid
