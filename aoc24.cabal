@@ -83,6 +83,9 @@ executable aoc24
       , http-conduit
       , time
       , directory
+      , optparse-applicative
+      , async
+      , ansi-terminal
     main-is: Main.hs
     ghc-options: -threaded -rtsopts -with-rtsopts=-N
 
