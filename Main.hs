@@ -125,8 +125,6 @@ solutionInputAvailable day = do
 -- variable, or the current year if that is not set
 downloadInput :: Int -> IO ByteString
 downloadInput inputDay = do
-  hPutStrLn stderr ("Downloading input for day " <> show inputDay)
-
   session_cookie <- getEnv "AOC_SESSION_COOKIE"
   aocYear <- getAOCYear
 
