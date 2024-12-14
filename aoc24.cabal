@@ -6,8 +6,9 @@ maintainer:         me@mpardalos.com
 
 common opts
     default-extensions:
-      TypeApplications ViewPatterns GADTs ImportQualifiedPost OverloadedRecordDot
-      NoFieldSelectors OverloadedLabels
+      TypeApplications ViewPatterns GADTs ImportQualifiedPost
+      OverloadedRecordDot NoFieldSelectors OverloadedLabels DataKinds
+      TemplateHaskell UndecidableInstances LambdaCase MultiWayIf
     default-language: GHC2021
 
 library
