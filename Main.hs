@@ -13,7 +13,7 @@
 module Main where
 
 import Control.Exception (Exception, SomeException, catch, evaluate, throwIO, try)
-import Control.Monad (forM, when, filterM, replicateM_)
+import Control.Monad (forM, when, filterM, replicateM_, forM_, void)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
 import Data.Function ((&))
@@ -24,14 +24,16 @@ import Network.HTTP.Simple
 import Network.HTTP.Types
 import Options.Applicative
 import Solutions (IsSlow (..), Solution (..), displayAnswer, isSolvedAnswer, problemName, solutions)
+import Day14 (part2Vis)
 import System.Clock
 import System.Directory
 import System.Environment (getEnv)
 import System.IO
 import Text.Printf (printf)
 import Control.Concurrent (newMVar, withMVar, newQSem, signalQSem, waitQSem, QSem)
-import System.Console.ANSI (cursorUp, saveCursor, restoreCursor, cursorUpLine, setCursorColumn)
+import System.Console.ANSI (cursorUp, saveCursor, restoreCursor, cursorUpLine, setCursorColumn, clearScreen)
 import Control.Concurrent.Async (async, wait)
+import Data.Either (fromRight)
 
 default (String)
 
@@ -185,11 +187,13 @@ runSolution solution@MkSolution {..} =
           | isSolvedAnswer v -> return (timeElapsed, displayAnswer v)
           | otherwise -> return (0, "")
 
-data Options = MkOptions
-  { solutionFilter :: Solution -> Bool
-  , showFuture :: Bool
-  , sequential :: Bool
-  }
+data Options
+  = Day14
+  | MkOptions
+    { solutionFilter :: Solution -> Bool
+    , showFuture :: Bool
+    , sequential :: Bool
+    }
 
 options :: Parser Options
 options = do
@@ -212,7 +216,9 @@ options = do
       ]
   showFuture <- switch (long "show-future" <> help "Show days that are not available yet")
   sequential <- switch (long "sequential" <> help "Run solutions one-by-one")
-  pure (let solutionFilter s = skipSlow s && day s in MkOptions {..})
+
+  day14 <- switch (long "day14" <> help "Run the day 14 visualisation")
+  pure (let solutionFilter s = skipSlow s && day s in if day14 then Day14 else MkOptions {..})
 
 parseArgs :: IO Options
 parseArgs =
@@ -222,46 +228,54 @@ parseArgs =
       (progDesc "Michalis' solutions to Advent of Code 2024")
 
 main :: IO ()
-main = do
-  MkOptions {solutionFilter, showFuture, sequential} <- parseArgs
-
-  toRun <- solutions
-    & filter solutionFilter
-    & filterM (\MkSolution {day} -> (showFuture ||) <$> solutionInputAvailable day)
-
-  -- Make space to fit the lines that will be printed
-  replicateM_ (length toRun + 5) $ putStrLn ""
-  cursorUp (length toRun + 5)
-
-  ioLock <- newMVar ()
-  let withIOLock = withMVar ioLock . const
-  runLock <- newMVar ()
-  let withRunLock
-        | sequential = withMVar runLock . const
-        | otherwise = id
-
-  tasks <- withMVar ioLock $ \() -> do
-    printTableAnchor Top
-    tasks <- forM (zip [0..] toRun) $ \(idx, solution) -> do
-      printLineName (problemName solution)
+main = parseArgs >>= \case
+  Day14 -> do
+    input <- getInput 14
+    let images = part2Vis (fromRight undefined input)
+    forM_ (zip [0::Int ..] images) $ \(i, image) -> do
+      clearScreen
+      printf "Iteration %d\n" i
+      putStrLn image
       putStrLn ""
-      return $ do
-        (timeElapsed, answer) <- withRunLock $
-          runSolution solution
-        withIOLock $ do
-          saveCursor
-          cursorUpLine (length toRun - idx + 1)
-          setCursorColumn (titleLength + 5)
-          printLineAnswer timeElapsed answer
-          restoreCursor
-        return timeElapsed
-    printTableAnchor Middle
-    return tasks
+      void $ getLine
+  MkOptions {solutionFilter, showFuture, sequential} -> do
+    toRun <- solutions
+      & filter solutionFilter
+      & filterM (\MkSolution {day} -> (showFuture ||) <$> solutionInputAvailable day)
 
-  times <- if sequential
-    then sequence tasks
-    else mapM wait =<< mapM async tasks
+    -- Make space to fit the lines that will be printed
+    replicateM_ (length toRun + 5) $ putStrLn ""
+    cursorUp (length toRun + 5)
 
-  printLineName "Total time"
-  printLineAnswer (sum times) ""
-  printTableAnchor Bottom
+    ioLock <- newMVar ()
+    let withIOLock = withMVar ioLock . const
+    runLock <- newMVar ()
+    let withRunLock
+          | sequential = withMVar runLock . const
+          | otherwise = id
+
+    tasks <- withMVar ioLock $ \() -> do
+      printTableAnchor Top
+      tasks <- forM (zip [0..] toRun) $ \(idx, solution) -> do
+        printLineName (problemName solution)
+        putStrLn ""
+        return $ do
+          (timeElapsed, answer) <- withRunLock $
+            runSolution solution
+          withIOLock $ do
+            saveCursor
+            cursorUpLine (length toRun - idx + 1)
+            setCursorColumn (titleLength + 5)
+            printLineAnswer timeElapsed answer
+            restoreCursor
+          return timeElapsed
+      printTableAnchor Middle
+      return tasks
+
+    times <- if sequential
+      then sequence tasks
+      else mapM wait =<< mapM async tasks
+
+    printLineName "Total time"
+    printLineAnswer (sum times) ""
+    printTableAnchor Bottom

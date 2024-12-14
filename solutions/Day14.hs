@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Day14 (part1, part2) where
+module Day14 (part1, part2, part2Vis) where
 
 import Control.Monad (void)
 import Data.Attoparsec.ByteString.Char8
@@ -55,18 +55,6 @@ countBy f =
     (\m x -> Map.insertWith (+) (f x) 1 m)
     Map.empty
 
-showPosition :: Bounds -> Robot -> String
-showPosition (cols, rows) MkRobot {position = (x, y)} =
-  unfoldr
-    ( \(r, c) ->
-        if
-          | r == rows -> Nothing
-          | c == cols -> Just ('\n', (r + 1, 0))
-          | r == y && c == x -> Just ('1', (r, c + 1))
-          | otherwise -> Just ('.', (r, c + 1))
-    )
-    (0, 0)
-
 showPositions :: Bounds -> [Robot] -> String
 showPositions (width, height) robots =
   let positions = countBy (view #position) robots
@@ -76,9 +64,9 @@ showPositions (width, height) robots =
               if
                 | r == height -> Nothing
                 | c == width -> Just ("\n", (r + 1, 0))
-                | Just count <- Map.lookup (c, r) positions ->
-                    Just (show count, (r, c + 1))
-                | otherwise -> Just (".", (r, c + 1))
+                | Just _ <- Map.lookup (c, r) positions ->
+                    Just ("█", (r, c + 1))
+                | otherwise -> Just (" ", (r, c + 1))
           )
           (0, 0)
 
@@ -106,6 +94,14 @@ part1 input =
     & Map.filterWithKey (\q _ -> isJust q)
     & expecting ((< 5) . length)
     & product
+  where
+    gridSize = (101, 103)
+
+part2Vis :: ByteString -> [String]
+part2Vis =
+  map (showPositions gridSize)
+    . iterate (map (stepRobot gridSize))
+    . readInput
   where
     gridSize = (101, 103)
 
