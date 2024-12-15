@@ -41,6 +41,8 @@ library
       , integer-logarithms
       , extra
       , MemoTrie
+      , mtl
+      , transformers
       , recursion-schemes
     hs-source-dirs: solutions
     exposed-modules:

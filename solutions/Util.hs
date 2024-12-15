@@ -207,3 +207,9 @@ averageDistanceFromCenter positions = integralAverage $ fmap (manhattanDistance 
       ( integralAverage (fst <$> positions),
         integralAverage (snd <$> positions)
       )
+
+untilSuccess :: IO (Maybe a) -> IO a
+untilSuccess f =
+  f >>= \case
+    Just x -> pure x
+    Nothing -> untilSuccess f
