@@ -34,6 +34,8 @@ import Control.Concurrent (newMVar, withMVar, newQSem, signalQSem, waitQSem, QSe
 import System.Console.ANSI (cursorUp, saveCursor, restoreCursor, cursorUpLine, setCursorColumn, clearScreen)
 import Control.Concurrent.Async (async, wait)
 import Data.Either (fromRight)
+import qualified Day15
+import Data.Functor ((<&>))
 
 default (String)
 
@@ -189,6 +191,7 @@ runSolution solution@MkSolution {..} =
 
 data Options
   = Day14
+  | Day15 (Maybe FilePath)
   | MkOptions
     { solutionFilter :: Solution -> Bool
     , showFuture :: Bool
@@ -218,7 +221,15 @@ options = do
   sequential <- switch (long "sequential" <> help "Run solutions one-by-one")
 
   day14 <- switch (long "day14" <> help "Run the day 14 visualisation")
-  pure (let solutionFilter s = skipSlow s && day s in if day14 then Day14 else MkOptions {..})
+  day15 <-
+    optional (
+      (Just <$> strOption (long "day15-with" <> help "Run the day 15 visualisation"))
+      <|> flag' Nothing (long "day15" <> help "Run the day 15 visualisation"))
+  pure (if
+           | day14 -> Day14
+           | Just fp <- day15 -> Day15 fp
+           | otherwise ->
+             let solutionFilter s = skipSlow s && day s in MkOptions {..})
 
 parseArgs :: IO Options
 parseArgs =
@@ -238,6 +249,11 @@ main = parseArgs >>= \case
       putStrLn image
       putStrLn ""
       void $ getLine
+  Day15 fp -> do
+    input <- case fp of
+      Nothing -> fromRight (error "Missing input") <$> getInput 15
+      Just path -> BS.readFile path
+    Day15.interactive input
   MkOptions {solutionFilter, showFuture, sequential} -> do
     toRun <- solutions
       & filter solutionFilter

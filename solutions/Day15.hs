@@ -1,15 +1,19 @@
-module Day15 (part1, part2) where
+module Day15 (part1, part2, interactive) where
 
 import Control.Applicative (many)
 import Data.Attoparsec.ByteString.Char8 (anyChar, endOfInput, endOfLine, inClass, manyTill, satisfy, sepBy)
 import Data.ByteString (ByteString)
 import Data.Function ((&))
+import Data.Functor ((<&>))
 import Data.List (find, foldl')
 import Data.Map (Map, (!), (!?))
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Vector (Vector)
 import Data.Vector qualified as V
+import GHC.IO.Handle (BufferMode (NoBuffering), hSetBuffering)
 import Safe (fromJustNote)
+import System.IO (hClose, stdin)
 import Util (Coords, east, north, parseOrError, south, west)
 
 -- | <, >, ^, or v
@@ -20,7 +24,22 @@ type Object = Char
 
 type GridMap = Map Coords Object
 
-data State = MkState !Coords !GridMap
+-- let mSiblingCoords = case c of
+--       '[' -> let (row, col) = coords in Just (row, col + 1)
+--       ']' -> let (row, col) = coords in Just (row, col - 1)
+--       _ -> Nothing
+-- (coords', gm') <- runInstruction instruction nextCoords gm
+-- (_, gm'') <- case mSiblingCoords of
+--   Just siblingCoords
+--     | instruction `elem` "v^" ->
+--         runInstruction instruction siblingCoords gm'
+--   _ignore ->
+--     pure (coords', gm')
+-- let newNewMap =
+--       gm''
+--         & Map.insert nextCoords c
+--         & Map.delete coords
+-- Just (nextCoords, newNewMap)
 
 readInput :: ByteString -> (Coords, Map Coords Object, [Instruction])
 readInput = parseOrError $ do
@@ -50,12 +69,10 @@ runInstruction instruction coords gm = case gm !? nextCoords of
     let newMap = gm & Map.insert nextCoords (gm ! coords) & Map.delete coords
      in Just (nextCoords, newMap)
   Just '#' -> Nothing
-  Just c | c `elem` "@O" ->
-    case runInstruction instruction nextCoords gm of
-      Nothing -> Nothing
-      Just (_, newMap) ->
-        let newNewMap = newMap & Map.insert nextCoords (gm ! coords) & Map.delete coords
-         in Just (nextCoords, newNewMap)
+  Just c | c `elem` "@O" -> do
+    (_, gm') <- runInstruction instruction nextCoords gm
+    let gm'' = gm' & Map.insert nextCoords (gm ! coords) & Map.delete coords
+    Just (nextCoords, gm'')
   Just c -> error ("Invalid object: " ++ show c)
   where
     nextCoords = case instruction of
@@ -75,27 +92,87 @@ runInstructions instructions initCoords initGm =
     (initCoords, initGm)
     instructions
 
-showGrid :: (Int, Int) -> GridMap -> String
-showGrid (rows, cols) gm =
+showGrid :: GridMap -> String
+showGrid gm =
   unlines
     [ [ showObject (gm !? (r, c))
-        | c <- [0 .. cols - 1]
+        | c <- [0 .. maxCol]
       ]
-      | r <- [0 .. rows - 1]
+      | r <- [0 .. maxRow]
     ]
   where
     showObject Nothing = '.'
     showObject (Just c) = c
 
+    maxCol = maximum . map snd . Map.keys $ gm
+    maxRow = maximum . map fst . Map.keys $ gm
+
 part1 :: ByteString -> Int
 part1 input =
   let (robot, gm, instructions) = readInput input
-      (_endCoords, finalGm) = runInstructions instructions robot gm
-   in finalGm
+   in gm
+        & runInstructions instructions robot
+        & snd
         & Map.filter (== 'O')
         & Map.keys
         & map (\(row, col) -> 100 * row + col)
         & sum
 
-part2 :: ByteString -> ()
-part2 _ = ()
+part2Expand :: GridMap -> GridMap
+part2Expand =
+  Map.fromList
+    . concatMap
+      ( \((row, col), o) -> case o of
+          '#' -> [((row, 2 * col), '#'), ((row, 2 * col + 1), '#')]
+          'O' -> [((row, 2 * col), '['), ((row, 2 * col + 1), ']')]
+          '@' -> [((row, 2 * col), '@')]
+          _ -> error ("Invalid object: " ++ show o)
+      )
+    . Map.toList
+
+part2 :: ByteString -> Int
+part2 input =
+  let (robot, gm, instructions) = readInput input
+   in gm
+        & part2Expand
+        & runInstructions instructions robot
+        & snd
+        & Map.filter (== 'O')
+        & Map.keys
+        & map (\(row, col) -> 100 * row + col)
+        & sum
+
+interactive :: ByteString -> IO ()
+interactive input = do
+  hSetBuffering stdin NoBuffering
+  go initCoords initGm
+  where
+    (initCoords, initGm, _instructions) = readInput input
+
+    go :: Coords -> GridMap -> IO ()
+    go coords gm = do
+      putStrLn
+        ( map
+            ( \case
+                '.' -> ' '
+                c -> c
+            )
+            $ showGrid gm
+        )
+      instruction <-
+        untilSuccess $
+          getChar <&> \case
+            'k' -> Just '^'
+            'j' -> Just 'v'
+            'h' -> Just '<'
+            'l' -> Just '>'
+            _ -> Nothing
+      runInstruction instruction coords gm
+        & fromMaybe (coords, gm)
+        & uncurry go
+
+untilSuccess :: IO (Maybe a) -> IO a
+untilSuccess f =
+  f >>= \case
+    Just x -> pure x
+    Nothing -> untilSuccess f
