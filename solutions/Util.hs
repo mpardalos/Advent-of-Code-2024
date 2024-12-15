@@ -23,7 +23,7 @@ import Data.Graph.Inductive (Graph, Node)
 import Data.GraphViz (GraphvizCanvas (Xlib), GraphvizCommand (Dot), GraphvizParams, Labellable, graphToDot, preview, quickParams, runGraphvizCanvas, runGraphvizCanvas', setDirectedness)
 import Data.HashSet qualified as HashSet
 import Data.Hashable (Hashable)
-import Data.List (groupBy, intercalate, unfoldr)
+import Data.List (groupBy, intercalate, unfoldr, foldl')
 import Data.Set qualified as Set
 import Debug.Trace (trace)
 import GHC.IO.Handle (hPutStr)
@@ -34,6 +34,8 @@ import System.Process
     createProcess,
     proc,
   )
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 parseOrError :: Parser a -> ByteString -> a
 parseOrError parser input = case parseOnly parser input of
@@ -185,3 +187,23 @@ withMutableArray f arr = runST $ do
   f mutArr
   freeze mutArr
 {-# INLINE withMutableArray #-}
+
+countBy :: (Foldable t, Ord k) => (a -> k) -> t a -> Map k Int
+countBy f =
+  foldl'
+    (\m x -> Map.insertWith (+) (f x) 1 m)
+    Map.empty
+
+count :: (Foldable t, Ord k) => t k -> Map k Int
+count = countBy id
+
+integralAverage :: (Integral a, Foldable t) => t a -> a
+integralAverage = uncurry div . foldl' (\(total, count) n -> (total + n, count + 1)) (0, 0)
+
+averageDistanceFromCenter :: (Functor t, Foldable t) => t (Int, Int) -> Int
+averageDistanceFromCenter positions = integralAverage $ fmap (manhattanDistance center) positions
+  where
+    center =
+      ( integralAverage (fst <$> positions),
+        integralAverage (snd <$> positions)
+      )
