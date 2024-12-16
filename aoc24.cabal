@@ -45,6 +45,7 @@ library
       , transformers
       , recursion-schemes
       , heaps
+      , search-algorithms
     hs-source-dirs: solutions
     exposed-modules:
         Solutions
