@@ -2,7 +2,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
 
 module Util where
 
@@ -10,7 +9,7 @@ import Control.Concurrent (forkIO)
 import Control.Monad (void, (>=>))
 import Control.Monad.ST (ST, runST)
 import Data.Array (Array)
-import Data.Array.IArray (IArray, Ix, assocs, listArray)
+import Data.Array.IArray (IArray, Ix, amap, assocs, listArray)
 import Data.Array.MArray (MArray, freeze, thaw)
 import Data.Array.ST (STArray, STUArray)
 import Data.Array.Unboxed (UArray)
@@ -23,7 +22,10 @@ import Data.Graph.Inductive (Graph, Node)
 import Data.GraphViz (GraphvizCanvas (Xlib), GraphvizCommand (Dot), GraphvizParams, Labellable, graphToDot, preview, quickParams, runGraphvizCanvas, runGraphvizCanvas', setDirectedness)
 import Data.HashSet qualified as HashSet
 import Data.Hashable (Hashable)
-import Data.List (groupBy, intercalate, unfoldr, foldl')
+import Data.Kind (Type)
+import Data.List (foldl', groupBy, intercalate, unfoldr)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Debug.Trace (trace)
 import GHC.IO.Handle (hPutStr)
@@ -34,8 +36,7 @@ import System.Process
     createProcess,
     proc,
   )
-import Data.Map (Map)
-import qualified Data.Map as Map
+import Text.Printf (printf)
 
 parseOrError :: Parser a -> ByteString -> a
 parseOrError parser input = case parseOnly parser input of
@@ -156,14 +157,20 @@ east (row, col) n = (row, col + n)
 north :: Coords -> Int -> Coords
 north (row, col) n = (row - n, col)
 
-rows :: Grid a -> [[a]]
+rows :: (IArray a e) => a Coords e -> [[e]]
 rows = map (map snd) . groupBy (equating (fst . fst)) . assocs
 
-showCharGrid :: Grid Char -> String
+showCharGrid :: (IArray a Char) => a Coords Char -> String
 showCharGrid = intercalate "\n" . rows
 
-showGridOneChar :: (Show a) => Grid a -> String
-showGridOneChar = showCharGrid . fmap (head . show)
+showGridOneChar :: (IArray a e', IArray a Char, Show e') => a Coords e' -> String
+showGridOneChar = showCharGrid . amap (head . show)
+
+showGridFull :: (IArray a e', IArray a Char, Show e', IArray a String) => a Coords e' -> String
+showGridFull g = unlines . map unwords . map (map (printf "[%*s] " maxWidth)) $ strGrid
+  where
+    strGrid = map (map show) $ rows g
+    maxWidth = maximum . map length $ concat strGrid
 
 linesOf :: Parser a -> Parser [a]
 linesOf p = p `sepBy` endOfLine
