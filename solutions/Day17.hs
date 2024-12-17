@@ -20,23 +20,29 @@ import Optics.State.Operators ((%=), (.=))
 import Text.Printf (printf)
 import Util (pairwiseSeparate, parseOrError)
 
-data Computer = MkComputer
-  { a :: !Int,
-    b :: !Int,
-    c :: !Int,
+data Computer v = MkComputer
+  { a :: !v,
+    b :: !v,
+    c :: !v,
     pc :: !Int,
     memory :: !(Vector Int),
-    output :: !(Vector Int)
+    output :: !(Vector v)
   }
 
 makeFieldLabelsNoPrefix ''Computer
 
-instance Show Computer where
+class Value v where
+  fromInt :: Int -> v
+
+instance Value Int where
+  fromInt = id
+
+instance Show v => Show (Computer v) where
   show MkComputer {..} =
-    unlines $
-      [ printf "Register A: %d" a,
-        printf "Register B: %d" b,
-        printf "Register C: %d" c,
+    unlines
+      [ printf "Register A: %s" (show a),
+        printf "Register B: %s" (show b),
+        printf "Register C: %s" (show c),
         "",
         program,
         "",
@@ -46,7 +52,7 @@ instance Show Computer where
       program =
         memory
           & V.toList
-          & zip [0 ..]
+          & zip [0 :: Int ..]
           & pairwiseSeparate
           & map showInstruction
           & unlines
@@ -73,9 +79,9 @@ instance Show Computer where
                   _ -> show op
              in printf "%s | %s" prefix operation
 
-type ComputerM a = StateT Computer Maybe a
+type ComputerM v a = StateT (Computer v) Maybe a
 
-readInput :: ByteString -> Computer
+readInput :: ByteString -> Computer Int
 readInput = parseOrError $ do
   a <- "Register A: " *> decimal <* endOfLine
   b <- "Register B: " *> decimal <* endOfLine
@@ -84,15 +90,15 @@ readInput = parseOrError $ do
   memory <- V.fromList <$> ("Program: " *> (decimal `sepBy` ","))
   return MkComputer {pc = 0, output = [], ..}
 
-readComboOperand :: Int -> ComputerM Int
-readComboOperand n | n <= 3 = pure n
+readComboOperand :: Value v => Int -> ComputerM v v
+readComboOperand n | n <= 3 = pure (fromInt n)
 readComboOperand 4 = use #a
 readComboOperand 5 = use #b
 readComboOperand 6 = use #c
 readComboOperand n = error ("Invalid combo operand: " ++ show n)
 
-step :: Computer -> Maybe Computer
-step = execStateT $ do
+concreteStep :: Computer Int -> Maybe (Computer Int)
+concreteStep = execStateT $ do
   guard =<< gets (\st -> st.pc <= length st.memory - 2)
   [instruction, operand] <- gets (\st -> V.slice st.pc 2 st.memory)
   #pc %= (+ 2)
@@ -126,8 +132,8 @@ step = execStateT $ do
       #c .= numerator .>>. denominator
     _ -> error ("Invalid instruction: " ++ show instruction)
 
-runToCompletion :: Computer -> [Computer]
-runToCompletion = unfoldr (fmap dupe . step)
+runToCompletion :: Computer Int -> [Computer Int]
+runToCompletion = unfoldr (fmap dupe . concreteStep)
 
 formatOutput :: (Foldable t) => t Int -> String
 formatOutput = intercalate "," . map show . toList

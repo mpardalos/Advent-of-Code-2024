@@ -46,6 +46,7 @@ library
       , recursion-schemes
       , heaps
       , search-algorithms
+      , simple-smt
     hs-source-dirs: solutions
     exposed-modules:
         Solutions
