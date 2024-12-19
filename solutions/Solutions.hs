@@ -56,6 +56,7 @@ data Solution = forall a.
 
 displayAnswer :: (Show a, Typeable a) => a -> String
 displayAnswer (cast -> Just ()) = ""
+displayAnswer (cast -> Just (s :: String)) = s
 displayAnswer x = show x
 
 isSolvedAnswer :: forall a. Typeable a => a -> Bool
