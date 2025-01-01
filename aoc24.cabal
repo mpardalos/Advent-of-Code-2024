@@ -47,6 +47,7 @@ library
       , heaps
       , search-algorithms
       , simple-smt
+      , hashtables
     hs-source-dirs: solutions
     exposed-modules:
         Solutions
