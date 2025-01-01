@@ -7,6 +7,7 @@ module Util where
 
 import Control.Concurrent (forkIO)
 import Control.Monad (void, (>=>))
+import Control.Monad.Reader (ReaderT (ReaderT))
 import Control.Monad.ST (ST, runST)
 import Data.Array (Array)
 import Data.Array.IArray (IArray, Ix, amap, assocs, listArray)
@@ -21,6 +22,7 @@ import Data.Function ((&))
 import Data.Graph.Inductive (Graph, Node)
 import Data.GraphViz (GraphvizCanvas (Xlib), GraphvizCommand (Dot), GraphvizParams, Labellable, graphToDot, preview, quickParams, runGraphvizCanvas, runGraphvizCanvas', setDirectedness)
 import Data.HashSet qualified as HashSet
+import Data.HashTable.ST.Basic (HashTable)
 import Data.Hashable (Hashable)
 import Data.Kind (Type)
 import Data.List (foldl', groupBy, intercalate, unfoldr)
@@ -37,6 +39,7 @@ import System.Process
     proc,
   )
 import Text.Printf (printf)
+import qualified Data.HashTable.ST.Basic as HT
 
 parseOrError :: Parser a -> ByteString -> a
 parseOrError parser input = case parseOnly parser input of
@@ -220,3 +223,27 @@ untilSuccess f =
   f >>= \case
     Just x -> pure x
     Nothing -> untilSuccess f
+
+newtype MemoM s k v a = MemoM (ReaderT (HashTable s k v) (ST s) a)
+  deriving newtype (Functor, Applicative, Monad)
+
+type Memo s k v = MemoM s k v v
+
+memo :: (Hashable k) => (k -> MemoM s k v v) -> k -> MemoM s k v v
+memo f k = MemoM $ ReaderT $ \tbl -> do
+  val <- HT.lookup tbl k
+  case val of
+    Just v -> return v
+    Nothing -> do
+      let (MemoM (ReaderT f')) = f k
+      v <- f' tbl
+      HT.insert tbl k v
+      return v
+
+memoToST :: (forall s. MemoM s k v a) -> (forall s. HashTable s k v -> ST s a)
+memoToST (MemoM (ReaderT x)) = x
+
+runMemoM :: (forall s. MemoM s k v a) -> a
+runMemoM m = runST $ do
+  tbl <- HT.new
+  memoToST m tbl
